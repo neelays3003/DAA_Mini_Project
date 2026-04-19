@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Inter-College Event Travel Optimizer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header class="header">
+  <div class="header-inner">
+    <div class="header-logo">
+      <span class="logo-icon">🗺️</span>
+      <div>
+        <h1>Inter-College Event Travel Optimizer</h1>
+        <p>Design & Analysis of Algorithms — Mini Project</p>
+      </div>
+    </div>
+    <div class="header-badges">
+      <span class="badge badge-blue">Dijkstra</span>
+      <span class="badge badge-purple">TSP + 2-opt</span>
+      <span class="badge badge-green">DP Knapsack</span>
+      <span class="badge badge-orange">Prim's MST</span>
+    </div>
+  </div>
+</header>
+
+<!-- ── Nav Tabs ── -->
+<nav class="tabs-nav">
+  <div class="tabs-inner">
+    <button class="tab-btn active" data-tab="overview">📊 Overview</button>
+    <button class="tab-btn" data-tab="shortest">⚡ Shortest Path</button>
+    <button class="tab-btn" data-tab="tsp">🔄 TSP Route</button>
+    <button class="tab-btn" data-tab="floyd">🌐 All-Pairs</button>
+    <button class="tab-btn" data-tab="mst">🌲 MST</button>
+    <button class="tab-btn" data-tab="knapsack">💰 Event Budget</button>
+    <button class="tab-btn" data-tab="schedule">📅 Scheduler</button>
+  </div>
+</nav>
+
+<main class="main">
+
+  <!-- ════ TAB: OVERVIEW ════ -->
+  <section class="tab-pane active" id="tab-overview">
+    <div class="section-header">
+      <h2>College Network Overview</h2>
+      <p>6 colleges connected by weighted road edges. Click any algorithm tab to explore.</p>
+    </div>
+    <div class="card-grid-3">
+      {% for key, col in colleges.items() %}
+      <div class="info-card">
+        <div class="info-card-id">{{ key }}</div>
+        <div class="info-card-name">{{ col.name }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="graph-box" id="overview-graph">
+      <div class="loader" id="overview-loader">Loading network graph…</div>
+    </div>
+
+    <div class="section-header mt-lg">
+      <h2>Events Available</h2>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>#</th><th>Event</th><th>Host</th><th>Budget (₹)</th><th>Time</th><th>Value</th></tr>
+        </thead>
+        <tbody>
+          {% for e in events %}
+          <tr>
+            <td>{{ e.id }}</td>
+            <td><strong>{{ e.name }}</strong></td>
+            <td><span class="node-pill">{{ e.host }}</span></td>
+            <td>₹{{ e.budget }}</td>
+            <td>{{ e.start }}:00 – {{ e.end }}:00</td>
+            <td><span class="val-bar"><span style="width:{{ e.value }}%"></span></span> {{ e.value }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="algo-grid mt-lg">
+      <div class="algo-card blue"><h3>Dijkstra's Algorithm</h3><p>O((V+E) log V)</p><small>Single-source shortest path using min-heap priority queue.</small></div>
+      <div class="algo-card purple"><h3>TSP + 2-opt</h3><p>O(n²)</p><small>Nearest-neighbour greedy start, refined with 2-opt local search.</small></div>
+      <div class="algo-card green"><h3>0/1 Knapsack DP</h3><p>O(n × W)</p><small>Maximise event value within total budget constraint.</small></div>
+      <div class="algo-card orange"><h3>Floyd-Warshall</h3><p>O(V³)</p><small>All-pairs shortest paths — precomputes full distance matrix.</small></div>
+      <div class="algo-card red"><h3>Prim's MST</h3><p>O(E log V)</p><small>Minimum spanning tree connecting all colleges at lowest cost.</small></div>
+      <div class="algo-card teal"><h3>Activity Selection</h3><p>O(n log n)</p><small>Greedy scheduling of max non-overlapping events by finish time.</small></div>
+    </div>
+  </section>
+
+  <!-- ════ TAB: SHORTEST PATH ════ -->
+  <section class="tab-pane" id="tab-shortest">
+    <div class="section-header">
+      <h2>Shortest Path — Dijkstra's Algorithm</h2>
+      <p>Find the minimum-cost route between any two colleges.</p>
+    </div>
+    <div class="form-card">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Source College</label>
+          <select id="sp-source">
+            {% for k,v in colleges.items() %}<option value="{{ k }}">{{ k }} — {{ v.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Destination College</label>
+          <select id="sp-target">
+            {% for k,v in colleges.items() %}<option value="{{ k }}" {% if loop.last %}selected{% endif %}>{{ k }} — {{ v.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="align-self:flex-end">
+          <button class="btn btn-primary" onclick="runDijkstra()">Find Shortest Path ⚡</button>
+        </div>
+      </div>
+    </div>
+    <div id="sp-result" class="result-area hidden">
+      <div class="stat-row" id="sp-stats"></div>
+      <div class="graph-box" id="sp-graph"></div>
+      <div class="steps-box">
+        <h3>Algorithm Steps (Dijkstra Trace)</h3>
+        <div id="sp-steps" class="steps-list"></div>
+      </div>
+      <div class="complexity-tag" id="sp-complexity"></div>
+    </div>
+    <div class="loader hidden" id="sp-loader">Running Dijkstra…</div>
+  </section>
+
+  <!-- ════ TAB: TSP ════ -->
+  <section class="tab-pane" id="tab-tsp">
+    <div class="section-header">
+      <h2>TSP Route — Greedy + 2-opt Improvement</h2>
+      <p>Visit all selected colleges in minimum total distance. Compare Greedy vs Optimized.</p>
+    </div>
+    <div class="form-card">
+      <label class="form-label">Select Colleges to Visit</label>
+      <div class="checkbox-grid" id="tsp-checkboxes">
+        {% for k,v in colleges.items() %}
+        <label class="checkbox-item">
+          <input type="checkbox" value="{{ k }}" checked> {{ k }} — {{ v.name }}
+        </label>
+        {% endfor %}
+      </div>
+      <button class="btn btn-primary mt" onclick="runTSP()">Optimize Route 🔄</button>
+    </div>
+    <div id="tsp-result" class="result-area hidden">
+      <div class="compare-grid">
+        <div class="compare-card red-card">
+          <h3>🔴 Greedy (Nearest Neighbour)</h3>
+          <div id="tsp-greedy-cost" class="big-stat"></div>
+          <div id="tsp-greedy-route" class="route-display"></div>
+          <div class="graph-box" id="tsp-greedy-graph"></div>
+        </div>
+        <div class="compare-card green-card">
+          <h3>🟢 Optimized (2-opt)</h3>
+          <div id="tsp-opt-cost" class="big-stat"></div>
+          <div id="tsp-opt-route" class="route-display"></div>
+          <div class="graph-box" id="tsp-opt-graph"></div>
+        </div>
+      </div>
+      <div class="savings-banner" id="tsp-savings"></div>
+      <div class="complexity-tag" id="tsp-complexity"></div>
+    </div>
+    <div class="loader hidden" id="tsp-loader">Running TSP + 2-opt…</div>
+  </section>
+
+  <!-- ════ TAB: FLOYD-WARSHALL ════ -->
+  <section class="tab-pane" id="tab-floyd">
+    <div class="section-header">
+      <h2>All-Pairs Shortest Paths — Floyd-Warshall</h2>
+      <p>Precomputed distance matrix between every pair of colleges.</p>
+    </div>
+    <button class="btn btn-primary" onclick="runFloyd()">Compute Distance Matrix 🌐</button>
+    <div id="floyd-result" class="result-area hidden">
+      <div class="graph-box" id="floyd-graph"></div>
+      <h3 class="mt">Distance Matrix (km)</h3>
+      <div class="table-wrap" id="floyd-table"></div>
+      <div class="complexity-tag" id="floyd-complexity"></div>
+    </div>
+    <div class="loader hidden" id="floyd-loader">Running Floyd-Warshall…</div>
+  </section>
+
+  <!-- ════ TAB: MST ════ -->
+  <section class="tab-pane" id="tab-mst">
+    <div class="section-header">
+      <h2>Minimum Spanning Tree — Prim's Algorithm</h2>
+      <p>Find the minimum-cost network connecting all colleges.</p>
+    </div>
+    <button class="btn btn-primary" onclick="runMST()">Build MST 🌲</button>
+    <div id="mst-result" class="result-area hidden">
+      <div class="graph-box" id="mst-graph"></div>
+      <h3 class="mt">MST Edges</h3>
+      <div class="table-wrap" id="mst-table"></div>
+      <div class="complexity-tag" id="mst-complexity"></div>
+    </div>
+    <div class="loader hidden" id="mst-loader">Running Prim's…</div>
+  </section>
+
+  <!-- ════ TAB: KNAPSACK ════ -->
+  <section class="tab-pane" id="tab-knapsack">
+    <div class="section-header">
+      <h2>Event Selection — 0/1 Knapsack (DP)</h2>
+      <p>Choose the best set of events that maximise value within your travel budget.</p>
+    </div>
+    <div class="form-card">
+      <div class="form-group">
+        <label>Total Budget (₹)</label>
+        <div style="display:flex;align-items:center;gap:12px">
+          <input type="range" id="budget-slider" min="100" max="1500" value="800" step="50"
+                 oninput="document.getElementById('budget-display').textContent='₹'+this.value">
+          <span class="budget-display" id="budget-display">₹800</span>
+        </div>
+      </div>
+      <button class="btn btn-primary mt" onclick="runKnapsack()">Select Best Events 💰</button>
+    </div>
+    <div id="knapsack-result" class="result-area hidden">
+      <div class="stat-row" id="ks-stats"></div>
+      <h3 class="mt">Selected Events</h3>
+      <div class="table-wrap" id="ks-table"></div>
+      <div class="complexity-tag" id="ks-complexity"></div>
+    </div>
+    <div class="loader hidden" id="knapsack-loader">Running DP Knapsack…</div>
+  </section>
+
+  <!-- ════ TAB: SCHEDULE ════ -->
+  <section class="tab-pane" id="tab-schedule">
+    <div class="section-header">
+      <h2>Event Scheduler — Activity Selection (Greedy)</h2>
+      <p>Schedule the maximum number of non-overlapping events in a day.</p>
+    </div>
+    <button class="btn btn-primary" onclick="runSchedule()">Generate Schedule 📅</button>
+    <div id="schedule-result" class="result-area hidden">
+      <div class="stat-row" id="sched-stats"></div>
+      <h3 class="mt">Timeline</h3>
+      <div id="sched-timeline" class="timeline-wrap"></div>
+      <div class="complexity-tag" id="sched-complexity"></div>
+    </div>
+    <div class="loader hidden" id="schedule-loader">Running Activity Selection…</div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <p>Inter-College Event Travel Optimizer &nbsp;|&nbsp; Design & Analysis of Algorithms Mini Project</p>
+</footer>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
