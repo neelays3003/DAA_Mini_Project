@@ -72,7 +72,7 @@ def floyd_warshall(graph, nodes):
 
 # ─── Greedy TSP (Nearest Neighbour) ───────────────────────────────────────────
 
-def greedy_tsp(graph, nodes, dist_matrix=None):
+def greedy_tsp(graph, nodes, dist_matrix=None, start_node=None):
     if not nodes:
         return []
     
@@ -80,9 +80,12 @@ def greedy_tsp(graph, nodes, dist_matrix=None):
     if dist_matrix is None:
         dist_matrix, _ = floyd_warshall(graph, nodes)
 
+    if start_node not in nodes:
+        start_node = nodes[0]
+
     unvisited = set(nodes)
-    route     = [nodes[0]]
-    unvisited.remove(nodes[0])
+    route     = [start_node]
+    unvisited.remove(start_node)
 
     while unvisited:
         current = route[-1]

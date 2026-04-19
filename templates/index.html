@@ -20,7 +20,7 @@
     </div>
     <div class="header-badges">
       <span class="badge badge-blue">Dijkstra</span>
-      <span class="badge badge-purple">TSP + 2-opt</span>
+      <span class="badge badge-purple">TSP</span>
       <span class="badge badge-green">DP Knapsack</span>
     </div>
   </div>
@@ -30,6 +30,7 @@
 <nav class="tabs-nav">
   <div class="tabs-inner">
     <button class="tab-btn active" data-tab="overview">📊 Overview</button>
+    <button class="tab-btn" data-tab="custom">✏️ Custom Data</button>
     <button class="tab-btn" data-tab="shortest">⚡ Shortest Path</button>
     <button class="tab-btn" data-tab="tsp">🔄 TSP Route</button>
     <button class="tab-btn" data-tab="floyd">🌐 All-Pairs</button>
@@ -83,11 +84,39 @@
 
     <div class="algo-grid mt-lg">
       <div class="algo-card blue"><h3>Dijkstra's Algorithm</h3><p>O((V+E) log V)</p><small>Single-source shortest path using min-heap priority queue.</small></div>
-      <div class="algo-card purple"><h3>TSP + 2-opt</h3><p>O(n²)</p><small>Nearest-neighbour greedy start, refined with 2-opt local search.</small></div>
-      <div class="algo-card green"><h3>0/1 Knapsack DP</h3><p>O(n × W)</p><small>Maximise event value within total budget constraint.</small></div>
+      <div class="algo-card purple"><h3>TSP</h3><p>O(n²)</p><small>Greedy nearest-neighbour and DP-based route comparison.</small></div>
+      <div class="algo-card green"><h3>0/1 Knapsack</h3><p>DP: O(n × W)</p><small>Greedy: O(n log n) | Branch &amp; Bound: O(2^n) with pruning | Backtracking: O(2^n)</small></div>
       <div class="algo-card orange"><h3>Floyd-Warshall</h3><p>O(V³)</p><small>All-pairs shortest paths — precomputes full distance matrix.</small></div>
-      <div class="algo-card red"><h3>Prim's MST</h3><p>O(E log V)</p><small>Minimum spanning tree connecting all colleges at lowest cost.</small></div>
-      <div class="algo-card teal"><h3>Activity Selection</h3><p>O(n log n)</p><small>Greedy scheduling of max non-overlapping events by finish time.</small></div>
+    </div>
+  </section>
+
+  <!-- ════ TAB: CUSTOM DATA ════ -->
+  <section class="tab-pane" id="tab-custom">
+    <div class="section-header">
+      <h2>Custom Dataset</h2>
+      <p>Replace the college network, roads, and events with your own JSON data.</p>
+    </div>
+
+    <div class="form-card custom-data-card">
+      <div class="form-group">
+        <label>Colleges JSON</label>
+        <textarea id="custom-colleges" rows="10" spellcheck="false">{{ colleges | tojson(indent=2) }}</textarea>
+        <small class="help-text">Use a JSON object where each college code maps to a name string or to an object with name, x, and y.</small>
+      </div>
+
+      <div class="form-group mt">
+        <label>Roads JSON</label>
+        <textarea id="custom-roads" rows="8" spellcheck="false">{{ roads | tojson(indent=2) }}</textarea>
+        <small class="help-text">Use an array of [from, to, weight] values or objects with from, to, and weight.</small>
+      </div>
+
+      <div class="form-group mt">
+        <label>Events JSON</label>
+        <textarea id="custom-events" rows="12" spellcheck="false">{{ events | tojson(indent=2) }}</textarea>
+        <small class="help-text">Each event must include name, host, budget, duration, start, end, and value.</small>
+      </div>
+
+      <button class="btn btn-primary mt" onclick="applyCustomDataset()">Apply Custom Dataset</button>
     </div>
   </section>
 
@@ -235,7 +264,6 @@
           <div class="complexity-tag" id="ks-backtrack-complexity"></div>
         </div>
       </div>
-      <div class="comparison-summary mt-lg" id="ks-comparison"></div>
     </div>
     <div class="loader hidden" id="knapsack-loader">Running algorithms…</div>
   </section>

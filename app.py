@@ -37,17 +37,193 @@ EVENTS = [
 
 graph = build_graph(COLLEGES, ROADS)
 
+
+def rebuild_graph():
+    return build_graph(COLLEGES, ROADS)
+
+
+def normalize_colleges(payload):
+    if not isinstance(payload, dict) or not payload:
+        raise ValueError("Colleges must be a non-empty JSON object.")
+
+    normalized = {}
+    codes = list(payload.keys())
+    positioned = 0
+
+    for index, (code, value) in enumerate(payload.items()):
+        code = str(code).strip()
+        if not code:
+            raise ValueError("College codes cannot be empty.")
+
+        if isinstance(value, str):
+            name = value.strip()
+            x = y = None
+        elif isinstance(value, dict):
+            name = str(value.get("name", "")).strip()
+            x = value.get("x")
+            y = value.get("y")
+        else:
+            raise ValueError(f"Invalid college entry for {code}.")
+
+        if not name:
+            raise ValueError(f"College name is required for {code}.")
+
+        if x is not None and y is not None:
+            try:
+                x = int(x)
+                y = int(y)
+                positioned += 1
+            except (TypeError, ValueError):
+                raise ValueError(f"College coordinates for {code} must be numbers.")
+
+        normalized[code] = {"name": name, "x": x, "y": y}
+
+    if positioned == 0:
+        from math import cos, sin, tau
+
+        center_x, center_y = 350, 300
+        radius = max(140, 40 * len(normalized))
+        for index, code in enumerate(codes):
+            angle = tau * index / max(len(codes), 1)
+            normalized[code]["x"] = round(center_x + radius * cos(angle))
+            normalized[code]["y"] = round(center_y + radius * sin(angle))
+    else:
+        missing = [code for code, value in normalized.items() if value.get("x") is None or value.get("y") is None]
+        if missing:
+            from math import cos, sin, tau
+
+            center_x, center_y = 350, 300
+            radius = max(140, 40 * len(missing))
+            for index, code in enumerate(missing):
+                angle = tau * index / max(len(missing), 1)
+                normalized[code]["x"] = round(center_x + radius * cos(angle))
+                normalized[code]["y"] = round(center_y + radius * sin(angle))
+
+    return normalized
+
+
+def normalize_roads(payload, colleges):
+    if not isinstance(payload, list):
+        raise ValueError("Roads must be a JSON array.")
+
+    normalized = []
+    for index, item in enumerate(payload, start=1):
+        if isinstance(item, dict):
+            u = str(item.get("from", "")).strip()
+            v = str(item.get("to", "")).strip()
+            w = item.get("weight")
+        elif isinstance(item, (list, tuple)) and len(item) == 3:
+            u, v, w = item
+            u = str(u).strip()
+            v = str(v).strip()
+        else:
+            raise ValueError(f"Road #{index} must be either [from, to, weight] or an object.")
+
+        if u not in colleges or v not in colleges:
+            raise ValueError(f"Road #{index} references an unknown college.")
+
+        try:
+            w = float(w)
+        except (TypeError, ValueError):
+            raise ValueError(f"Road #{index} weight must be numeric.")
+
+        if w <= 0:
+            raise ValueError(f"Road #{index} weight must be greater than zero.")
+
+        normalized.append((u, v, w))
+
+    return normalized
+
+
+def normalize_events(payload, colleges):
+    if not isinstance(payload, list):
+        raise ValueError("Events must be a JSON array.")
+
+    required_fields = ["name", "host", "budget", "duration", "start", "end", "value"]
+    normalized = []
+    for index, item in enumerate(payload, start=1):
+        if not isinstance(item, dict):
+            raise ValueError(f"Event #{index} must be an object.")
+
+        event = {}
+        for field in required_fields:
+            if field not in item:
+                raise ValueError(f"Event #{index} is missing '{field}'.")
+            event[field] = item[field]
+
+        event["name"] = str(event["name"]).strip()
+        event["host"] = str(event["host"]).strip()
+        if not event["name"]:
+            raise ValueError(f"Event #{index} name cannot be empty.")
+        if event["host"] not in colleges:
+            raise ValueError(f"Event #{index} host must match a college code.")
+
+        try:
+            event["budget"] = int(event["budget"])
+            event["duration"] = int(event["duration"])
+            event["start"] = int(event["start"])
+            event["end"] = int(event["end"])
+            event["value"] = int(event["value"])
+        except (TypeError, ValueError):
+            raise ValueError(f"Event #{index} budget, duration, start, end, and value must be integers.")
+
+        normalized.append({
+            "id": item.get("id", index),
+            "name": event["name"],
+            "host": event["host"],
+            "budget": event["budget"],
+            "duration": event["duration"],
+            "start": event["start"],
+            "end": event["end"],
+            "value": event["value"],
+        })
+
+    return normalized
+
 # ---------- Routes ----------
 
 @app.route("/")
 def index():
-    return render_template("index.html", colleges=COLLEGES, events=EVENTS)
+    return render_template("index.html", colleges=COLLEGES, roads=ROADS, events=EVENTS)
+
+
+@app.route("/api/custom_dataset", methods=["POST"])
+def custom_dataset():
+    global COLLEGES, ROADS, EVENTS, graph
+
+    data = request.get_json(silent=True) or {}
+
+    try:
+        colleges = normalize_colleges(data.get("colleges"))
+        roads = normalize_roads(data.get("roads"), colleges)
+        events = normalize_events(data.get("events"), colleges)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+
+    COLLEGES = colleges
+    ROADS = roads
+    EVENTS = events
+    graph = rebuild_graph()
+
+    return jsonify({
+        "message": "Custom dataset applied successfully.",
+        "college_count": len(COLLEGES),
+        "road_count": len(ROADS),
+        "event_count": len(EVENTS),
+    })
 
 @app.route("/api/shortest_path", methods=["POST"])
 def shortest_path():
     data    = request.json
-    source  = data.get("source")
-    target  = data.get("target")
+    source  = str(data.get("source", "")).strip().upper()
+    target  = str(data.get("target", "")).strip().upper()
+
+    if source not in COLLEGES or target not in COLLEGES:
+        return jsonify({"error": "Please select valid colleges."}), 400
+
+    if source == target:
+        return jsonify({"error": "Source and destination must be different."}), 400
+
     dist, prev = dijkstra(graph, source)
     if target not in dist:
         return jsonify({"error": "No path found"}), 400
@@ -68,33 +244,43 @@ def tsp_route():
         data     = request.json
         colleges = data.get("colleges", list(COLLEGES.keys()))
         print(f"[TSP] Starting with colleges: {colleges}")
-        
-        # Precompute distance matrix once
-        print(f"[TSP] Computing Floyd-Warshall...")
-        dist_matrix, _ = floyd_warshall(graph, colleges)
+
+        selected = [c for c in colleges if c in COLLEGES]
+        if len(selected) < 2:
+            return jsonify({"error": "Select at least 2 colleges for TSP."}), 400
+
+        # Precompute on the full graph so shortest paths can pass through intermediate colleges.
+        print(f"[TSP] Computing Floyd-Warshall on full graph...")
+        all_nodes = list(COLLEGES.keys())
+        dist_matrix, next_node = floyd_warshall(graph, all_nodes)
 
         print(f"[TSP] Running dynamic programming TSP...")
-        dp_route, dp_cost = tsp_dp(graph, colleges, dist_matrix)
+        dp_route, dp_cost = tsp_dp(graph, selected, dist_matrix)
         print(f"[TSP] DP route: {dp_route}")
         print(f"[TSP] DP cost: {dp_cost}")
         
         print(f"[TSP] Running greedy TSP...")
-        greedy   = greedy_tsp(graph, colleges, dist_matrix)
+        greedy   = greedy_tsp(graph, selected, dist_matrix, start_node=selected[0])
         print(f"[TSP] Greedy route: {greedy}")
         gc = route_cost_matrix(greedy, dist_matrix)
         print(f"[TSP] Greedy cost: {gc}")
+
+        dp_full_route = expand_route(dp_route, next_node)
+        greedy_full_route = expand_route(greedy, next_node)
         
         print(f"[TSP] Generating visualizations...")
-        img_dp = draw_route(COLLEGES, ROADS, dp_route,     title="DP TSP Route", highlight_color="#8e44ad")
-        img_g = draw_route(COLLEGES, ROADS, greedy,     title="Greedy TSP Route",    highlight_color="#e74c3c")
+        img_dp = draw_route(COLLEGES, ROADS, dp_full_route, title="DP TSP Route", highlight_color="#8e44ad")
+        img_g = draw_route(COLLEGES, ROADS, greedy_full_route, title="Greedy TSP Route", highlight_color="#e74c3c")
         print(f"[TSP] Done! Returning response...")
         
         response = {
             "dp_route": dp_route,
             "dp_cost": dp_cost,
+            "dp_full_route": dp_full_route,
             "image_dp": img_dp,
             "greedy_route": greedy, 
             "greedy_cost": gc,
+            "greedy_full_route": greedy_full_route,
             "image_greedy": img_g, 
             "complexity": "DP: O(n²·2ⁿ) | Greedy: O(n²)"
         }
@@ -193,6 +379,31 @@ def route_cost_matrix(route, dist_matrix):
         u, v = route[i], route[i+1]
         cost += dist_matrix[u][v]
     return round(cost, 2)
+
+
+def expand_route(route, next_node):
+    """Expand a terminal route into the underlying shortest-path walk."""
+    if not route:
+        return []
+
+    expanded = [route[0]]
+    for i in range(len(route) - 1):
+        u, v = route[i], route[i + 1]
+        if u == v:
+            continue
+
+        if next_node.get(u, {}).get(v) is None:
+            expanded.append(v)
+            continue
+
+        current = u
+        while current != v:
+            current = next_node[current][v]
+            if current is None:
+                break
+            expanded.append(current)
+
+    return expanded
 
 def get_dijkstra_steps(g, source, target):
     import heapq

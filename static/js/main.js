@@ -38,10 +38,53 @@ function setImg(id, b64) {
     `<img src="data:image/png;base64,${b64}" alt="Graph"/>`;
 }
 
+function readJsonTextarea(id) {
+  const raw = document.getElementById(id).value.trim();
+  return raw ? JSON.parse(raw) : null;
+}
+
+function currentCollegeCodes() {
+  return [...document.querySelectorAll("#sp-source option")].map(opt => opt.value.trim().toUpperCase());
+}
+
+async function applyCustomDataset() {
+  let colleges, roads, events;
+
+  try {
+    colleges = readJsonTextarea("custom-colleges");
+    roads = readJsonTextarea("custom-roads");
+    events = readJsonTextarea("custom-events");
+  } catch (error) {
+    alert("Invalid JSON: " + error.message);
+    return;
+  }
+
+  const response = await fetch("/api/custom_dataset", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ colleges, roads, events })
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    alert(data.error || "Unable to apply custom dataset.");
+    return;
+  }
+
+  alert(`${data.message} Colleges: ${data.college_count}, roads: ${data.road_count}, events: ${data.event_count}. The page will reload to reflect the new dataset.`);
+  window.location.reload();
+}
+
 /* ── Dijkstra ── */
 async function runDijkstra() {
-  const source = document.getElementById("sp-source").value;
-  const target = document.getElementById("sp-target").value;
+  const source = document.getElementById("sp-source").value.trim().toUpperCase();
+  const target = document.getElementById("sp-target").value.trim().toUpperCase();
+  const validNodes = new Set(currentCollegeCodes());
+
+  if (!validNodes.has(source) || !validNodes.has(target)) {
+    alert("Select valid colleges from the list.");
+    return;
+  }
   if (source === target) { alert("Source and target must be different."); return; }
 
   hide("sp-result");
@@ -212,51 +255,9 @@ async function runKnapsackAlgorithm(endpoint, cardId) {
     // Fill complexity
     setHTML(cardId + "-complexity",
       `⏱ Time Complexity: ${data.complexity} | Algorithm: ${data.algorithm}`);
-
-    // Update comparison
-    updateKnapsackComparison();
   } catch (error) {
     hide("knapsack-loader");
     alert("Error: " + error.message);
-  }
-}
-
-function updateKnapsackComparison() {
-  // Find all visible cards and their values
-  const cards = ["ks-dp", "ks-greedy", "ks-bb", "ks-backtrack"];
-  const results = {};
-
-  cards.forEach(cardId => {
-    const card = document.getElementById(cardId);
-    if (card.style.display !== "none") {
-      const valueText = card.querySelector(".stat-value:nth-child(4)")?.textContent || "0";
-      results[cardId] = parseInt(valueText) || 0;
-    }
-  });
-
-  // Find best and worst
-  const values = Object.values(results);
-  if (values.length > 0) {
-    const maxValue = Math.max(...values);
-    const minValue = Math.min(...values);
-    
-    let comparison = `<div style="background:#f0f8ff;padding:15px;border-radius:8px">
-      <h4>Algorithm Comparison:</h4>
-      <ul style="list-style:none;padding:0">`;
-    
-    Object.entries(results).forEach(([cardId, value]) => {
-      const label = cardId.replace("ks-", "").toUpperCase();
-      let status = "";
-      if (value === maxValue && maxValue > minValue) {
-        status = " ✓ Best value";
-      } else if (value === minValue && maxValue > minValue) {
-        status = " (suboptimal)";
-      }
-      comparison += `<li>• ${label}: ₹${value}${status}</li>`;
-    });
-    
-    comparison += `</ul></div>`;
-    setHTML("ks-comparison", comparison);
   }
 }
 
