@@ -1,11 +1,11 @@
 from flask import Flask, render_template, request, jsonify
 import json
 from algorithms import (
-    dijkstra, floyd_warshall, greedy_tsp, two_opt,
+    dijkstra, floyd_warshall, greedy_tsp, tsp_dp,
     knapsack_events, activity_selection, build_graph,
-    prim_mst
+    greedy_budget, branch_and_bound_knapsack, backtrack_knapsack
 )
-from visualizer import draw_graph, draw_route, draw_mst
+from visualizer import draw_graph, draw_route
 
 app = Flask(__name__)
 
@@ -72,33 +72,31 @@ def tsp_route():
         # Precompute distance matrix once
         print(f"[TSP] Computing Floyd-Warshall...")
         dist_matrix, _ = floyd_warshall(graph, colleges)
+
+        print(f"[TSP] Running dynamic programming TSP...")
+        dp_route, dp_cost = tsp_dp(graph, colleges, dist_matrix)
+        print(f"[TSP] DP route: {dp_route}")
+        print(f"[TSP] DP cost: {dp_cost}")
         
         print(f"[TSP] Running greedy TSP...")
         greedy   = greedy_tsp(graph, colleges, dist_matrix)
         print(f"[TSP] Greedy route: {greedy}")
-        
-        print(f"[TSP] Running 2-opt optimization...")
-        optimized= two_opt(graph, greedy, dist_matrix)
-        print(f"[TSP] Optimized route: {optimized}")
-        
         gc = route_cost_matrix(greedy, dist_matrix)
-        oc = route_cost_matrix(optimized, dist_matrix)
-        print(f"[TSP] Greedy cost: {gc}, Optimized cost: {oc}")
+        print(f"[TSP] Greedy cost: {gc}")
         
         print(f"[TSP] Generating visualizations...")
+        img_dp = draw_route(COLLEGES, ROADS, dp_route,     title="DP TSP Route", highlight_color="#8e44ad")
         img_g = draw_route(COLLEGES, ROADS, greedy,     title="Greedy TSP Route",    highlight_color="#e74c3c")
-        img_o = draw_route(COLLEGES, ROADS, optimized,  title="Optimized (2-opt) Route", highlight_color="#27ae60")
         print(f"[TSP] Done! Returning response...")
         
         response = {
+            "dp_route": dp_route,
+            "dp_cost": dp_cost,
+            "image_dp": img_dp,
             "greedy_route": greedy, 
             "greedy_cost": gc,
-            "optimized_route": optimized, 
-            "optimized_cost": oc,
-            "savings": round(gc - oc, 2),
             "image_greedy": img_g, 
-            "image_optimized": img_o,
-            "complexity": "Greedy: O(n²) | 2-opt: O(n²) per pass"
+            "complexity": "DP: O(n²·2ⁿ) | Greedy: O(n²)"
         }
         print(f"[TSP] Response keys: {response.keys()}")
         return jsonify(response)
@@ -123,13 +121,6 @@ def all_pairs():
     return jsonify({"table": table, "nodes": nodes, "image": img,
                     "complexity": "O(V³)"})
 
-@app.route("/api/mst", methods=["GET"])
-def mst():
-    mst_edges, total = prim_mst(graph, list(COLLEGES.keys()))
-    img = draw_mst(COLLEGES, ROADS, mst_edges, title="Minimum Spanning Tree (Prim's)")
-    return jsonify({"mst_edges": mst_edges, "total_cost": total,
-                    "image": img, "complexity": "O(E log V)"})
-
 @app.route("/api/knapsack", methods=["POST"])
 def knapsack():
     data   = request.json
@@ -138,7 +129,38 @@ def knapsack():
     return jsonify({"chosen_events": chosen, "total_value": total_val,
                     "total_cost": total_cost, "budget": budget,
                     "dp_table_size": f"{len(EVENTS)+1} × {budget+1}",
-                    "complexity": "O(n × W)"})
+                    "complexity": "O(n × W)",
+                    "algorithm": "Dynamic Programming"})
+
+@app.route("/api/knapsack_greedy", methods=["POST"])
+def knapsack_greedy():
+    data   = request.json
+    budget = int(data.get("budget", 800))
+    chosen, total_val, total_cost = greedy_budget(EVENTS, budget)
+    return jsonify({"chosen_events": chosen, "total_value": total_val,
+                    "total_cost": total_cost, "budget": budget,
+                    "complexity": "O(n log n)",
+                    "algorithm": "Greedy (Value/Cost Ratio)"})
+
+@app.route("/api/knapsack_bb", methods=["POST"])
+def knapsack_bb():
+    data   = request.json
+    budget = int(data.get("budget", 800))
+    chosen, total_val, total_cost = branch_and_bound_knapsack(EVENTS, budget)
+    return jsonify({"chosen_events": chosen, "total_value": total_val,
+                    "total_cost": total_cost, "budget": budget,
+                    "complexity": "O(2^n) with pruning",
+                    "algorithm": "Branch and Bound"})
+
+@app.route("/api/knapsack_backtrack", methods=["POST"])
+def knapsack_backtrack():
+    data   = request.json
+    budget = int(data.get("budget", 800))
+    chosen, total_val, total_cost = backtrack_knapsack(EVENTS, budget)
+    return jsonify({"chosen_events": chosen, "total_value": total_val,
+                    "total_cost": total_cost, "budget": budget,
+                    "complexity": "O(2^n)",
+                    "algorithm": "Backtracking"})
 
 @app.route("/api/schedule", methods=["POST"])
 def schedule():

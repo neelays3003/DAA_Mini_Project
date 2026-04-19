@@ -247,6 +247,30 @@ select:focus { outline: none; border-color: #3498db; background: white; }
 .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(52,152,219,0.45); }
 .btn-primary:active { transform: translateY(0); }
 
+.btn-success {
+  background: linear-gradient(135deg, #2ecc71, #27ae60);
+  color: white;
+  box-shadow: 0 2px 8px rgba(46,204,113,0.35);
+}
+.btn-success:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(46,204,113,0.45); }
+.btn-success:active { transform: translateY(0); }
+
+.btn-warning {
+  background: linear-gradient(135deg, #f39c12, #e67e22);
+  color: white;
+  box-shadow: 0 2px 8px rgba(243,156,18,0.35);
+}
+.btn-warning:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(243,156,18,0.45); }
+.btn-warning:active { transform: translateY(0); }
+
+.btn-info {
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  color: white;
+  box-shadow: 0 2px 8px rgba(155,89,182,0.35);
+}
+.btn-info:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(155,89,182,0.45); }
+.btn-info:active { transform: translateY(0); }
+
 /* ── Checkboxes ── */
 .checkbox-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
 .checkbox-item {
@@ -299,6 +323,10 @@ select:focus { outline: none; border-color: #3498db; background: white; }
 @media(max-width:700px) { .compare-grid { grid-template-columns: 1fr; } }
 .compare-card { background: white; border-radius: 12px; padding: 1.2rem; border: 1px solid #e8ecf0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 .compare-card h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; }
+.algo-title { color: #2c3e50; border-bottom: 2px solid #e8ecf0; padding-bottom: 8px; }
+.comparison-summary { margin-top: 1.5rem; }
+.comparison-summary h4 { font-size: 0.9rem; color: #666; margin-bottom: 8px; }
+.comparison-summary ul li { font-size: 0.88rem; color: #555; padding: 4px 0; }
 .red-card   { border-top: 4px solid #e74c3c; }
 .green-card { border-top: 4px solid #2ecc71; }
 .big-stat   { font-size: 1.8rem; font-weight: 700; color: #2c3e50; }

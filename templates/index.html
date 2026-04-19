@@ -20,9 +20,8 @@
     </div>
     <div class="header-badges">
       <span class="badge badge-blue">Dijkstra</span>
-      <span class="badge badge-purple">TSP + 2-opt</span>
+      <span class="badge badge-purple">TSP DP</span>
       <span class="badge badge-green">DP Knapsack</span>
-      <span class="badge badge-orange">Prim's MST</span>
     </div>
   </div>
 </header>
@@ -34,7 +33,6 @@
     <button class="tab-btn" data-tab="shortest">⚡ Shortest Path</button>
     <button class="tab-btn" data-tab="tsp">🔄 TSP Route</button>
     <button class="tab-btn" data-tab="floyd">🌐 All-Pairs</button>
-    <button class="tab-btn" data-tab="mst">🌲 MST</button>
     <button class="tab-btn" data-tab="knapsack">💰 Event Budget</button>
     <button class="tab-btn" data-tab="schedule">📅 Scheduler</button>
   </div>
@@ -85,7 +83,7 @@
 
     <div class="algo-grid mt-lg">
       <div class="algo-card blue"><h3>Dijkstra's Algorithm</h3><p>O((V+E) log V)</p><small>Single-source shortest path using min-heap priority queue.</small></div>
-      <div class="algo-card purple"><h3>TSP + 2-opt</h3><p>O(n²)</p><small>Nearest-neighbour greedy start, refined with 2-opt local search.</small></div>
+      <div class="algo-card purple"><h3>TSP — DP + Greedy</h3><p>O(n²·2ⁿ)</p><small>Exact DP solution with a greedy comparison route.</small></div>
       <div class="algo-card green"><h3>0/1 Knapsack DP</h3><p>O(n × W)</p><small>Maximise event value within total budget constraint.</small></div>
       <div class="algo-card orange"><h3>Floyd-Warshall</h3><p>O(V³)</p><small>All-pairs shortest paths — precomputes full distance matrix.</small></div>
       <div class="algo-card red"><h3>Prim's MST</h3><p>O(E log V)</p><small>Minimum spanning tree connecting all colleges at lowest cost.</small></div>
@@ -133,8 +131,8 @@
   <!-- ════ TAB: TSP ════ -->
   <section class="tab-pane" id="tab-tsp">
     <div class="section-header">
-      <h2>TSP Route — Greedy + 2-opt Improvement</h2>
-      <p>Visit all selected colleges in minimum total distance. Compare Greedy vs Optimized.</p>
+      <h2>TSP Route — Dynamic Programming + Greedy</h2>
+      <p>Compare the exact DP solution with the greedy nearest-neighbour route.</p>
     </div>
     <div class="form-card">
       <label class="form-label">Select Colleges to Visit</label>
@@ -145,27 +143,27 @@
         </label>
         {% endfor %}
       </div>
-      <button class="btn btn-primary mt" onclick="runTSP()">Optimize Route 🔄</button>
+      <button class="btn btn-primary mt" onclick="runTSP()">Compare Routes 🔄</button>
     </div>
     <div id="tsp-result" class="result-area hidden">
       <div class="compare-grid">
+        <div class="compare-card purple-card">
+          <h3>🟣 Dynamic Programming (Exact)</h3>
+          <div id="tsp-dp-cost" class="big-stat"></div>
+          <div id="tsp-dp-route" class="route-display"></div>
+          <div class="graph-box" id="tsp-dp-graph"></div>
+        </div>
         <div class="compare-card red-card">
           <h3>🔴 Greedy (Nearest Neighbour)</h3>
           <div id="tsp-greedy-cost" class="big-stat"></div>
           <div id="tsp-greedy-route" class="route-display"></div>
           <div class="graph-box" id="tsp-greedy-graph"></div>
         </div>
-        <div class="compare-card green-card">
-          <h3>🟢 Optimized (2-opt)</h3>
-          <div id="tsp-opt-cost" class="big-stat"></div>
-          <div id="tsp-opt-route" class="route-display"></div>
-          <div class="graph-box" id="tsp-opt-graph"></div>
-        </div>
       </div>
       <div class="savings-banner" id="tsp-savings"></div>
       <div class="complexity-tag" id="tsp-complexity"></div>
     </div>
-    <div class="loader hidden" id="tsp-loader">Running TSP + 2-opt…</div>
+    <div class="loader hidden" id="tsp-loader">Running TSP…</div>
   </section>
 
   <!-- ════ TAB: FLOYD-WARSHALL ════ -->
@@ -184,27 +182,11 @@
     <div class="loader hidden" id="floyd-loader">Running Floyd-Warshall…</div>
   </section>
 
-  <!-- ════ TAB: MST ════ -->
-  <section class="tab-pane" id="tab-mst">
-    <div class="section-header">
-      <h2>Minimum Spanning Tree — Prim's Algorithm</h2>
-      <p>Find the minimum-cost network connecting all colleges.</p>
-    </div>
-    <button class="btn btn-primary" onclick="runMST()">Build MST 🌲</button>
-    <div id="mst-result" class="result-area hidden">
-      <div class="graph-box" id="mst-graph"></div>
-      <h3 class="mt">MST Edges</h3>
-      <div class="table-wrap" id="mst-table"></div>
-      <div class="complexity-tag" id="mst-complexity"></div>
-    </div>
-    <div class="loader hidden" id="mst-loader">Running Prim's…</div>
-  </section>
-
   <!-- ════ TAB: KNAPSACK ════ -->
   <section class="tab-pane" id="tab-knapsack">
     <div class="section-header">
-      <h2>Event Selection — 0/1 Knapsack (DP)</h2>
-      <p>Choose the best set of events that maximise value within your travel budget.</p>
+      <h2>Event Selection — Multiple Algorithms</h2>
+      <p>Compare different algorithms for the 0/1 Knapsack problem.</p>
     </div>
     <div class="form-card">
       <div class="form-group">
@@ -215,15 +197,47 @@
           <span class="budget-display" id="budget-display">₹800</span>
         </div>
       </div>
-      <button class="btn btn-primary mt" onclick="runKnapsack()">Select Best Events 💰</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="runKnapsackDP()">DP Knapsack 💰</button>
+        <button class="btn btn-success" onclick="runKnapsackGreedy()">Greedy 🚀</button>
+        <button class="btn btn-warning" onclick="runKnapsackBB()">Branch & Bound 🌳</button>
+        <button class="btn btn-info" onclick="runKnapsackBacktrack()">Backtrack 🔙</button>
+      </div>
     </div>
     <div id="knapsack-result" class="result-area hidden">
-      <div class="stat-row" id="ks-stats"></div>
-      <h3 class="mt">Selected Events</h3>
-      <div class="table-wrap" id="ks-table"></div>
-      <div class="complexity-tag" id="ks-complexity"></div>
+      <div class="compare-grid">
+        <div class="compare-card" id="ks-dp" style="display:none">
+          <h3 class="algo-title">💎 Dynamic Programming</h3>
+          <div id="ks-dp-stats"></div>
+          <h4>Selected Events</h4>
+          <div id="ks-dp-table" class="table-wrap"></div>
+          <div class="complexity-tag" id="ks-dp-complexity"></div>
+        </div>
+        <div class="compare-card" id="ks-greedy" style="display:none">
+          <h3 class="algo-title">🚀 Greedy</h3>
+          <div id="ks-greedy-stats"></div>
+          <h4>Selected Events</h4>
+          <div id="ks-greedy-table" class="table-wrap"></div>
+          <div class="complexity-tag" id="ks-greedy-complexity"></div>
+        </div>
+        <div class="compare-card" id="ks-bb" style="display:none">
+          <h3 class="algo-title">🌳 Branch & Bound</h3>
+          <div id="ks-bb-stats"></div>
+          <h4>Selected Events</h4>
+          <div id="ks-bb-table" class="table-wrap"></div>
+          <div class="complexity-tag" id="ks-bb-complexity"></div>
+        </div>
+        <div class="compare-card" id="ks-backtrack" style="display:none">
+          <h3 class="algo-title">🔙 Backtracking</h3>
+          <div id="ks-backtrack-stats"></div>
+          <h4>Selected Events</h4>
+          <div id="ks-backtrack-table" class="table-wrap"></div>
+          <div class="complexity-tag" id="ks-backtrack-complexity"></div>
+        </div>
+      </div>
+      <div class="comparison-summary mt-lg" id="ks-comparison"></div>
     </div>
-    <div class="loader hidden" id="knapsack-loader">Running DP Knapsack…</div>
+    <div class="loader hidden" id="knapsack-loader">Running algorithms…</div>
   </section>
 
   <!-- ════ TAB: SCHEDULE ════ -->

@@ -95,16 +95,17 @@ async function runTSP() {
   const data = await res.json();
   hide("tsp-loader");
 
+  setHTML("tsp-dp-cost",      `${data.dp_cost} km`);
   setHTML("tsp-greedy-cost",  `${data.greedy_cost} km`);
-  setHTML("tsp-opt-cost",     `${data.optimized_cost} km`);
+  setHTML("tsp-dp-route",     data.dp_route.join(" → "));
   setHTML("tsp-greedy-route", data.greedy_route.join(" → "));
-  setHTML("tsp-opt-route",    data.optimized_route.join(" → "));
+  setImg("tsp-dp-graph",      data.image_dp);
   setImg("tsp-greedy-graph",  data.image_greedy);
-  setImg("tsp-opt-graph",     data.image_optimized);
 
-  const pct = ((data.savings / data.greedy_cost) * 100).toFixed(1);
+  const gap = Math.max(0, data.greedy_cost - data.dp_cost).toFixed(2);
+  const pct = data.dp_cost > 0 ? ((data.greedy_cost - data.dp_cost) / data.dp_cost * 100).toFixed(1) : "0.0";
   setHTML("tsp-savings",
-    `🎯 2-opt saved ${data.savings} km (${pct}% improvement over greedy)`);
+    `🎯 DP found the exact optimum. Greedy is ${gap} km above optimum (${pct}% gap).`);
 
   setHTML("tsp-complexity", `⏱ Time Complexity: ${data.complexity}`);
   show("tsp-result");
@@ -140,71 +141,123 @@ async function runFloyd() {
   show("floyd-result");
 }
 
-/* ── MST ── */
-async function runMST() {
-  hide("mst-result");
-  show("mst-loader");
+/* ── Knapsack ── */
 
-  const data = await fetch("/api/mst").then(r => r.json());
-  hide("mst-loader");
-
-  setImg("mst-graph", data.image);
-
-  let table = `<table class="data-table"><thead>
-    <tr><th>#</th><th>From</th><th>To</th><th>Cost (km)</th></tr>
-  </thead><tbody>`;
-  data.mst_edges.forEach(([u, v, w], i) => {
-    table += `<tr><td>${i+1}</td><td><span class="node-pill">${u}</span></td>
-      <td><span class="node-pill">${v}</span></td><td>${w} km</td></tr>`;
-  });
-  table += `<tr><td colspan="3"><strong>Total MST Cost</strong></td>
-    <td><strong>${data.total_cost} km</strong></td></tr>`;
-  table += `</tbody></table>`;
-  setHTML("mst-table", table);
-
-  setHTML("mst-complexity", `⏱ Time Complexity: ${data.complexity}`);
-  show("mst-result");
+async function runKnapsackDP() {
+  await runKnapsackAlgorithm("/api/knapsack", "ks-dp");
 }
 
-/* ── Knapsack ── */
-async function runKnapsack() {
+async function runKnapsackGreedy() {
+  await runKnapsackAlgorithm("/api/knapsack_greedy", "ks-greedy");
+}
+
+async function runKnapsackBB() {
+  await runKnapsackAlgorithm("/api/knapsack_bb", "ks-bb");
+}
+
+async function runKnapsackBacktrack() {
+  await runKnapsackAlgorithm("/api/knapsack_backtrack", "ks-backtrack");
+}
+
+async function runKnapsackAlgorithm(endpoint, cardId) {
   const budget = document.getElementById("budget-slider").value;
-  hide("knapsack-result");
   show("knapsack-loader");
 
-  const data = await fetch("/api/knapsack", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ budget: parseInt(budget) })
-  }).then(r => r.json());
-  hide("knapsack-loader");
+  try {
+    const data = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ budget: parseInt(budget) })
+    }).then(r => r.json());
+    hide("knapsack-loader");
 
-  setHTML("ks-stats",
-    statCard("Budget", `₹${data.budget}`, "blue") +
-    statCard("Spent", `₹${data.total_cost}`, "red") +
-    statCard("Remaining", `₹${data.budget - data.total_cost}`, "green") +
-    statCard("Total Value", data.total_value, "purple") +
-    statCard("Events Chosen", data.chosen_events.length, "blue")
-  );
+    // Show the result area
+    if (document.getElementById("knapsack-result").classList.contains("hidden")) {
+      show("knapsack-result");
+    }
 
-  let table = `<table class="data-table"><thead>
-    <tr><th>#</th><th>Event</th><th>Host</th><th>Budget</th><th>Value</th></tr>
-  </thead><tbody>`;
-  data.chosen_events.forEach((e, i) => {
-    table += `<tr>
-      <td>${i+1}</td>
-      <td><strong>${e.name}</strong></td>
-      <td><span class="node-pill">${e.host}</span></td>
-      <td>₹${e.budget}</td>
-      <td><span class="val-bar"><span style="width:${e.value}%"></span></span> ${e.value}</td>
-    </tr>`;
+    // Show the specific card
+    document.getElementById(cardId).style.display = "block";
+
+    // Fill statistics
+    const statsId = cardId + "-stats";
+    setHTML(statsId,
+      statCard("Budget", `₹${data.budget}`, "blue") +
+      statCard("Spent", `₹${data.total_cost}`, "red") +
+      statCard("Remaining", `₹${data.budget - data.total_cost}`, "green") +
+      statCard("Total Value", data.total_value, "purple") +
+      statCard("Events", data.chosen_events.length, "blue")
+    );
+
+    // Fill events table
+    let table = `<table class="data-table"><thead>
+      <tr><th>#</th><th>Event</th><th>Host</th><th>Budget</th><th>Value</th></tr>
+    </thead><tbody>`;
+    if (data.chosen_events.length === 0) {
+      table += `<tr><td colspan="5" style="text-align:center">No events selected</td></tr>`;
+    } else {
+      data.chosen_events.forEach((e, i) => {
+        table += `<tr>
+          <td>${i+1}</td>
+          <td><strong>${e.name}</strong></td>
+          <td><span class="node-pill">${e.host}</span></td>
+          <td>₹${e.budget}</td>
+          <td><span class="val-bar"><span style="width:${e.value}%"></span></span> ${e.value}</td>
+        </tr>`;
+      });
+    }
+    table += `</tbody></table>`;
+    setHTML(cardId + "-table", table);
+
+    // Fill complexity
+    setHTML(cardId + "-complexity",
+      `⏱ Time Complexity: ${data.complexity} | Algorithm: ${data.algorithm}`);
+
+    // Update comparison
+    updateKnapsackComparison();
+  } catch (error) {
+    hide("knapsack-loader");
+    alert("Error: " + error.message);
+  }
+}
+
+function updateKnapsackComparison() {
+  // Find all visible cards and their values
+  const cards = ["ks-dp", "ks-greedy", "ks-bb", "ks-backtrack"];
+  const results = {};
+
+  cards.forEach(cardId => {
+    const card = document.getElementById(cardId);
+    if (card.style.display !== "none") {
+      const valueText = card.querySelector(".stat-value:nth-child(4)")?.textContent || "0";
+      results[cardId] = parseInt(valueText) || 0;
+    }
   });
-  table += `</tbody></table>`;
-  setHTML("ks-table", table);
 
-  setHTML("ks-complexity",
-    `⏱ Time Complexity: ${data.complexity} | DP Table: ${data.dp_table_size}`);
-  show("knapsack-result");
+  // Find best and worst
+  const values = Object.values(results);
+  if (values.length > 0) {
+    const maxValue = Math.max(...values);
+    const minValue = Math.min(...values);
+    
+    let comparison = `<div style="background:#f0f8ff;padding:15px;border-radius:8px">
+      <h4>Algorithm Comparison:</h4>
+      <ul style="list-style:none;padding:0">`;
+    
+    Object.entries(results).forEach(([cardId, value]) => {
+      const label = cardId.replace("ks-", "").toUpperCase();
+      let status = "";
+      if (value === maxValue && maxValue > minValue) {
+        status = " ✓ Best value";
+      } else if (value === minValue && maxValue > minValue) {
+        status = " (suboptimal)";
+      }
+      comparison += `<li>• ${label}: ₹${value}${status}</li>`;
+    });
+    
+    comparison += `</ul></div>`;
+    setHTML("ks-comparison", comparison);
+  }
 }
 
 /* ── Activity Selection / Scheduler ── */
