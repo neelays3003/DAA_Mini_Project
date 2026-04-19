@@ -19,11 +19,11 @@ def dijkstra(graph, source):
     dist = {node: float("inf") for node in graph}
     dist[source] = 0
     prev = {}
-    pq   = [(0, source)]   # (distance, node)
+    pq   = [(0, source)]   
 
     while pq:
         d, u = heapq.heappop(pq)
-        if d > dist[u]:    # stale entry — skip
+        if d > dist[u]:    
             continue
         for v, weight in graph[u].items():
             new_dist = d + weight
