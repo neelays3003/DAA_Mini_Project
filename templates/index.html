@@ -20,7 +20,7 @@
     </div>
     <div class="header-badges">
       <span class="badge badge-blue">Dijkstra</span>
-      <span class="badge badge-purple">TSP DP</span>
+      <span class="badge badge-purple">TSP + 2-opt</span>
       <span class="badge badge-green">DP Knapsack</span>
     </div>
   </div>
@@ -74,7 +74,7 @@
             <td><span class="node-pill">{{ e.host }}</span></td>
             <td>₹{{ e.budget }}</td>
             <td>{{ e.start }}:00 – {{ e.end }}:00</td>
-            <td><span class="val-bar"><span style="width:{{ e.value }}%"></span></span> {{ e.value }}</td>
+            <td><span class="val-bar"><span style="width:{{ e.value }}%"></span>< /span> {{ e.value }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -83,7 +83,7 @@
 
     <div class="algo-grid mt-lg">
       <div class="algo-card blue"><h3>Dijkstra's Algorithm</h3><p>O((V+E) log V)</p><small>Single-source shortest path using min-heap priority queue.</small></div>
-      <div class="algo-card purple"><h3>TSP — DP + Greedy</h3><p>O(n²·2ⁿ)</p><small>Exact DP solution with a greedy comparison route.</small></div>
+      <div class="algo-card purple"><h3>TSP + 2-opt</h3><p>O(n²)</p><small>Nearest-neighbour greedy start, refined with 2-opt local search.</small></div>
       <div class="algo-card green"><h3>0/1 Knapsack DP</h3><p>O(n × W)</p><small>Maximise event value within total budget constraint.</small></div>
       <div class="algo-card orange"><h3>Floyd-Warshall</h3><p>O(V³)</p><small>All-pairs shortest paths — precomputes full distance matrix.</small></div>
       <div class="algo-card red"><h3>Prim's MST</h3><p>O(E log V)</p><small>Minimum spanning tree connecting all colleges at lowest cost.</small></div>
